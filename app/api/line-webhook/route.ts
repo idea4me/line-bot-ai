@@ -1,71 +1,64 @@
 import { NextRequest, NextResponse } from "next/server";
-import { messagingApi, validateSignature, webhook } from "@line/bot-sdk";
-import { getAnswer } from "@/services/answer-service";
-import { logConversation, logError } from "@/lib/logger";
+import { DEFAULT_REPLY } from "@/constants/prompts";
+import { getSupportAnswer } from "@/lib/answer";
+import { LineWebhookEvent, replyLineMessage, verifyLineSignature } from "@/lib/line";
+import { logConversation, logError, logWarning } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const channelAccessToken = process.env.LINE_CHANNEL_ACCESS_TOKEN;
-const channelSecret = process.env.LINE_CHANNEL_SECRET;
-
-function getLineClient() {
-  if (!channelAccessToken) {
-    throw new Error("Missing LINE_CHANNEL_ACCESS_TOKEN");
-  }
-
-  return new messagingApi.MessagingApiClient({
-    channelAccessToken
-  });
-}
-
 export async function POST(request: NextRequest) {
-  if (!channelSecret) {
-    return NextResponse.json({ error: "Missing LINE_CHANNEL_SECRET" }, { status: 500 });
-  }
-
   const signature = request.headers.get("x-line-signature") ?? "";
   const body = await request.text();
 
-  if (!validateSignature(body, channelSecret, signature)) {
-    return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+  try {
+    if (!verifyLineSignature(body, signature)) {
+      logWarning("invalid-line-signature", {
+        ip: request.headers.get("x-forwarded-for") ?? request.headers.get("x-real-ip") ?? "unknown",
+        timestamp: new Date().toISOString()
+      });
+
+      return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
+    }
+  } catch (error) {
+    logError("line-signature-config", error);
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const payload = JSON.parse(body) as { events?: webhook.Event[] };
-  const client = getLineClient();
+  let payload: { events?: LineWebhookEvent[] };
+
+  try {
+    payload = JSON.parse(body) as { events?: LineWebhookEvent[] };
+  } catch (error) {
+    logError("line-webhook-json", error);
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
 
   await Promise.all(
     (payload.events ?? []).map(async (event) => {
-      if (event.type !== "message" || event.message.type !== "text") {
+      if (event.type !== "message" || event.message.type !== "text" || !event.replyToken) {
         return;
       }
 
-      if (!event.replyToken) {
-        return;
+      try {
+        const question = event.message.text;
+        const result = await getSupportAnswer(question);
+
+        await replyLineMessage(event.replyToken, result.answer);
+
+        logConversation({
+          timestamp: new Date().toISOString(),
+          userId: event.source?.userId,
+          question,
+          answer: result.answer,
+          finishReason: result.finishReason,
+          tokenUsage: result.tokenUsage,
+          sourceUsed: result.sourceUsed
+        });
+      } catch (error) {
+        logError("line-event-processing", error);
+        await replyLineMessage(event.replyToken, DEFAULT_REPLY);
       }
-
-      const question = event.message.text;
-      const result = await getAnswer(question);
-
-      await client.replyMessage({
-        replyToken: event.replyToken,
-        messages: [
-          {
-            type: "text",
-            text: result.answer
-          }
-        ]
-      });
-
-      logConversation({
-        timestamp: new Date().toISOString(),
-        userId: event.source?.userId,
-        question,
-        answer: result.answer,
-        finishReason: result.finishReason,
-        tokenUsage: result.tokenUsage,
-        sourceUsed: result.sourceUsed
-      });
     })
   );
 
@@ -77,10 +70,5 @@ export async function GET() {
 }
 
 export async function OPTIONS() {
-  try {
-    return NextResponse.json({ ok: true });
-  } catch (error) {
-    logError("line-webhook-options", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
-  }
+  return NextResponse.json({ ok: true });
 }

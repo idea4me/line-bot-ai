@@ -2,14 +2,15 @@ import { GoogleGenAI } from "@google/genai";
 import { logGeminiUsage } from "@/lib/logger";
 import { TokenUsage } from "@/types/faq";
 
-type GeminiJsonAnswer = {
-  answer: string;
-  confidence: number;
+const MODEL = "gemini-2.5-flash";
+const GEMINI_TIMEOUT_MS = 8_000;
+const MAX_OUTPUT_TOKENS = 1024;
+
+export type GeminiAnswer = {
+  text: string;
   finishReason?: string;
   tokenUsage?: TokenUsage;
 };
-
-const model = "gemini-2.5-flash";
 
 function getClient() {
   const apiKey = process.env.GEMINI_API_KEY;
@@ -17,31 +18,21 @@ function getClient() {
     throw new Error("Missing GEMINI_API_KEY");
   }
 
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenAI({
+    apiKey,
+    httpOptions: {
+      timeout: GEMINI_TIMEOUT_MS
+    }
+  });
 }
 
-function parseJsonAnswer(text: string): Pick<GeminiJsonAnswer, "answer" | "confidence"> {
-  try {
-    const parsed = JSON.parse(text.trim()) as Partial<GeminiJsonAnswer>;
-    return {
-      answer: parsed.answer ?? "NOT_FOUND",
-      confidence: Number(parsed.confidence ?? 0)
-    };
-  } catch {
-    return {
-      answer: "NOT_FOUND",
-      confidence: 0
-    };
-  }
-}
-
-export async function generateJsonAnswer(prompt: string): Promise<GeminiJsonAnswer> {
+export async function generateGeminiAnswer(prompt: string): Promise<GeminiAnswer> {
   const response = await getClient().models.generateContent({
-    model,
+    model: MODEL,
     contents: prompt,
     config: {
-      temperature: 0.1,
-      responseMimeType: "application/json"
+      temperature: 1.0,
+      maxOutputTokens: MAX_OUTPUT_TOKENS
     }
   });
 
@@ -60,7 +51,7 @@ export async function generateJsonAnswer(prompt: string): Promise<GeminiJsonAnsw
   });
 
   return {
-    ...parseJsonAnswer(response.text ?? ""),
+    text: response.text?.trim() ?? "",
     finishReason,
     tokenUsage
   };

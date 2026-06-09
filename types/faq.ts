@@ -3,10 +3,10 @@ export type FaqItem = {
   question: string;
   answer: string;
   keywords: string;
-  last_update: string;
+  active: boolean;
 };
 
-export type AnswerSource = "FAQ" | "KM" | "HELP" | "DEFAULT" | "ESCALATION";
+export type AnswerSource = "FAQ" | "KM" | "HELP" | "DEFAULT";
 
 export type TokenUsage = {
   thoughtsTokenCount?: number;
@@ -16,7 +16,6 @@ export type TokenUsage = {
 
 export type AnswerResult = {
   answer: string;
-  confidence: number;
   finishReason?: string;
   tokenUsage?: TokenUsage;
   sourceUsed: AnswerSource;

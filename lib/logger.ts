@@ -27,3 +27,7 @@ export function logError(context: string, error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   console.error(JSON.stringify({ type: "error", context, message }));
 }
+
+export function logWarning(context: string, data?: Record<string, unknown>) {
+  console.warn(JSON.stringify({ type: "warning", context, ...data }));
+}
