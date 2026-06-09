@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
   logInfo("line-webhook-received", {
     eventCount: events.length,
     eventTypes: events.map((event) => event.type),
+    modes: events.map((event) => event.mode),
     messageTypes: events.map((event) => (event.type === "message" ? event.message.type : null)),
     hasReplyTokens: events.map((event) => ("replyToken" in event ? Boolean(event.replyToken) : false))
   });
@@ -59,7 +60,11 @@ export async function POST(request: NextRequest) {
       }
 
       if (!event.replyToken) {
-        logWarning("line-webhook-event-skipped", { reason: "missing-reply-token" });
+        logWarning("line-webhook-event-skipped", {
+          reason: "missing-reply-token",
+          mode: event.mode,
+          sourceType: event.source?.type
+        });
         return;
       }
 
