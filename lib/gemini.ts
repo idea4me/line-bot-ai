@@ -3,7 +3,7 @@ import { logGeminiUsage } from "@/lib/logger";
 import { TokenUsage } from "@/types/faq";
 
 const MODEL = "gemini-2.5-flash";
-const GEMINI_TIMEOUT_MS = 6_000;
+const GEMINI_ABORT_TIMEOUT_MS = 6_000;
 const MAX_OUTPUT_TOKENS = 1024;
 
 export type GeminiAnswer = {
@@ -18,12 +18,7 @@ function getClient() {
     throw new Error("Missing GEMINI_API_KEY");
   }
 
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      timeout: GEMINI_TIMEOUT_MS
-    }
-  });
+  return new GoogleGenAI({ apiKey });
 }
 
 export async function generateGeminiAnswer(prompt: string): Promise<GeminiAnswer> {
@@ -35,7 +30,8 @@ export async function generateGeminiAnswer(prompt: string): Promise<GeminiAnswer
       maxOutputTokens: MAX_OUTPUT_TOKENS,
       thinkingConfig: {
         thinkingBudget: 0
-      }
+      },
+      abortSignal: AbortSignal.timeout(GEMINI_ABORT_TIMEOUT_MS)
     }
   });
 
