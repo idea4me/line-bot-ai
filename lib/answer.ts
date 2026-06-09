@@ -5,7 +5,7 @@ import { logError } from "@/lib/logger";
 import { fetchSearchSource, HELP_URL, KM_URL } from "@/lib/search";
 import { AnswerResult, AnswerSource } from "@/types/faq";
 
-const ANSWER_TIMEOUT_MS = 8_800;
+const ANSWER_TIMEOUT_MS = 6_500;
 
 function defaultResult(sourceUsed: AnswerSource = "DEFAULT", result?: GeminiAnswer): AnswerResult {
   return {

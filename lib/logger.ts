@@ -8,6 +8,7 @@ type ConversationLog = {
   finishReason?: string;
   tokenUsage?: TokenUsage;
   sourceUsed: AnswerSource;
+  replyOk?: boolean;
 };
 
 export function logConversation(entry: ConversationLog) {

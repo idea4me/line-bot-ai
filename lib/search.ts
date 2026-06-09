@@ -1,4 +1,4 @@
-const FETCH_TIMEOUT_MS = 2_000;
+const FETCH_TIMEOUT_MS = 1_500;
 const MAX_SOURCE_LENGTH = 12_000;
 
 export const KM_URL = "https://km.menu.in.th/public/";

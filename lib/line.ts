@@ -21,6 +21,25 @@ export function verifyLineSignature(body: string, signature: string) {
   return validateSignature(body, channelSecret, signature);
 }
 
+function getErrorDetails(error: unknown) {
+  if (!(error instanceof Error)) {
+    return { message: String(error) };
+  }
+
+  const details = Object.fromEntries(
+    Object.entries(error as Error & Record<string, unknown>).filter(([, value]) => {
+      const valueType = typeof value;
+      return valueType === "string" || valueType === "number" || valueType === "boolean";
+    })
+  );
+
+  return {
+    name: error.name,
+    message: error.message,
+    ...details
+  };
+}
+
 export async function replyLineMessage(replyToken: string, text: string) {
   try {
     const client = new messagingApi.MessagingApiClient({
@@ -36,8 +55,10 @@ export async function replyLineMessage(replyToken: string, text: string) {
         }
       ]
     });
+
+    return true;
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logWarning("line-reply-failed", { message });
+    logWarning("line-reply-failed", getErrorDetails(error));
+    return false;
   }
 }

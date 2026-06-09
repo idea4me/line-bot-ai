@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         const question = event.message.text;
         const result = await getSupportAnswer(question);
 
-        await replyLineMessage(event.replyToken, result.answer);
+        const replyOk = await replyLineMessage(event.replyToken, result.answer);
 
         logConversation({
           timestamp: new Date().toISOString(),
@@ -53,7 +53,8 @@ export async function POST(request: NextRequest) {
           answer: result.answer,
           finishReason: result.finishReason,
           tokenUsage: result.tokenUsage,
-          sourceUsed: result.sourceUsed
+          sourceUsed: result.sourceUsed,
+          replyOk
         });
       } catch (error) {
         logError("line-event-processing", error);
@@ -66,7 +67,16 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, service: "line-webhook" });
+  return NextResponse.json({
+    ok: true,
+    service: "line-webhook",
+    env: {
+      LINE_CHANNEL_ACCESS_TOKEN: Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN),
+      LINE_CHANNEL_SECRET: Boolean(process.env.LINE_CHANNEL_SECRET),
+      GEMINI_API_KEY: Boolean(process.env.GEMINI_API_KEY),
+      SHEET_CSV_URL: Boolean(process.env.SHEET_CSV_URL)
+    }
+  });
 }
 
 export async function OPTIONS() {

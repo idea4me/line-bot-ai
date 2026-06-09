@@ -1,7 +1,7 @@
 import { FaqItem } from "@/types/faq";
 
 const FAQ_CACHE_TTL_MS = 60_000;
-const FAQ_FETCH_TIMEOUT_MS = 3_000;
+const FAQ_FETCH_TIMEOUT_MS = 1_500;
 
 let cachedFaq: {
   csv: string;

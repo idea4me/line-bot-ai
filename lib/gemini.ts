@@ -3,7 +3,7 @@ import { logGeminiUsage } from "@/lib/logger";
 import { TokenUsage } from "@/types/faq";
 
 const MODEL = "gemini-2.5-flash";
-const GEMINI_TIMEOUT_MS = 8_000;
+const GEMINI_TIMEOUT_MS = 6_000;
 const MAX_OUTPUT_TOKENS = 1024;
 
 export type GeminiAnswer = {
