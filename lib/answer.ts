@@ -1,18 +1,23 @@
 import { DEFAULT_REPLY, NOT_FOUND_TOKEN, buildFaqPrompt, buildWebSourcePrompt } from "@/constants/prompts";
 import { getFaqCsvContent } from "@/lib/faq";
 import { generateGeminiAnswer, GeminiAnswer } from "@/lib/gemini";
-import { logError } from "@/lib/logger";
+import { logError, logInfo } from "@/lib/logger";
 import { fetchSearchSource, HELP_URL, KM_URL } from "@/lib/search";
 import { AnswerResult, AnswerSource } from "@/types/faq";
 
 const ANSWER_TIMEOUT_MS = 6_500;
 
-function defaultResult(sourceUsed: AnswerSource = "DEFAULT", result?: GeminiAnswer): AnswerResult {
+function defaultResult(
+  sourceUsed: AnswerSource = "DEFAULT",
+  defaultReason = "not_found",
+  result?: GeminiAnswer
+): AnswerResult {
   return {
     answer: DEFAULT_REPLY,
     finishReason: result?.finishReason,
     tokenUsage: result?.tokenUsage,
-    sourceUsed
+    sourceUsed,
+    defaultReason
   };
 }
 
@@ -29,10 +34,16 @@ async function answerFromPrompt(prompt: string, sourceUsed: AnswerSource): Promi
   const result = await generateGeminiAnswer(prompt);
 
   if (result.finishReason === "MAX_TOKENS") {
-    return defaultResult("DEFAULT", result);
+    logInfo("answer-default", { sourceUsed, reason: "max_tokens" });
+    return defaultResult("DEFAULT", "max_tokens", result);
   }
 
   if (!isUsable(result)) {
+    logInfo("answer-source-not-found", {
+      sourceUsed,
+      finishReason: result.finishReason,
+      answerLength: normalizeAnswer(result.text).length
+    });
     return null;
   }
 
@@ -49,9 +60,13 @@ async function buildAnswer(question: string): Promise<AnswerResult> {
 
   try {
     faqCsv = await getFaqCsvContent();
+    logInfo("faq-loaded", {
+      csvLength: faqCsv.length,
+      rowCount: Math.max(faqCsv.split(/\r?\n/).length - 1, 0)
+    });
   } catch (error) {
     logError("faq-sheet", error);
-    return defaultResult();
+    return defaultResult("DEFAULT", "faq_sheet_error");
   }
 
   try {
@@ -61,7 +76,7 @@ async function buildAnswer(question: string): Promise<AnswerResult> {
     }
   } catch (error) {
     logError("gemini-faq", error);
-    return defaultResult();
+    return defaultResult("DEFAULT", "gemini_faq_error");
   }
 
   try {
@@ -84,14 +99,18 @@ async function buildAnswer(question: string): Promise<AnswerResult> {
     logError("help-search", error);
   }
 
-  return defaultResult();
+  logInfo("answer-default", { reason: "all_sources_not_found" });
+  return defaultResult("DEFAULT", "all_sources_not_found");
 }
 
 export async function getSupportAnswer(question: string): Promise<AnswerResult> {
   return Promise.race([
     buildAnswer(question),
     new Promise<AnswerResult>((resolve) => {
-      setTimeout(() => resolve(defaultResult()), ANSWER_TIMEOUT_MS);
+      setTimeout(() => {
+        logInfo("answer-default", { reason: "answer_timeout", timeoutMs: ANSWER_TIMEOUT_MS });
+        resolve(defaultResult("DEFAULT", "answer_timeout"));
+      }, ANSWER_TIMEOUT_MS);
     })
   ]);
 }

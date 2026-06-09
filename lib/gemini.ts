@@ -32,7 +32,10 @@ export async function generateGeminiAnswer(prompt: string): Promise<GeminiAnswer
     contents: prompt,
     config: {
       temperature: 1.0,
-      maxOutputTokens: MAX_OUTPUT_TOKENS
+      maxOutputTokens: MAX_OUTPUT_TOKENS,
+      thinkingConfig: {
+        thinkingBudget: 0
+      }
     }
   });
 

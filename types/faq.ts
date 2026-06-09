@@ -19,4 +19,5 @@ export type AnswerResult = {
   finishReason?: string;
   tokenUsage?: TokenUsage;
   sourceUsed: AnswerSource;
+  defaultReason?: string;
 };

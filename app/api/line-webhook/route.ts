@@ -87,7 +87,8 @@ export async function POST(request: NextRequest) {
           finishReason: result.finishReason,
           tokenUsage: result.tokenUsage,
           sourceUsed: result.sourceUsed,
-          replyOk
+          replyOk,
+          defaultReason: result.defaultReason
         });
       } catch (error) {
         logError("line-event-processing", error);
