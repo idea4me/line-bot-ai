@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { DEFAULT_REPLY } from "@/constants/prompts";
 import { getSupportAnswer } from "@/lib/answer";
 import { LineWebhookEvent, replyLineMessage, verifyLineSignature } from "@/lib/line";
-import { logConversation, logError, logWarning } from "@/lib/logger";
+import { logConversation, logError, logInfo, logWarning } from "@/lib/logger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,14 +34,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  const events = payload.events ?? [];
+  logInfo("line-webhook-received", {
+    eventCount: events.length,
+    eventTypes: events.map((event) => event.type),
+    messageTypes: events.map((event) => (event.type === "message" ? event.message.type : null)),
+    hasReplyTokens: events.map((event) => ("replyToken" in event ? Boolean(event.replyToken) : false))
+  });
+
+  if (events.length === 0) {
+    logInfo("line-webhook-empty-events");
+  }
+
   await Promise.all(
-    (payload.events ?? []).map(async (event) => {
-      if (event.type !== "message" || event.message.type !== "text" || !event.replyToken) {
+    events.map(async (event) => {
+      if (event.type !== "message") {
+        logInfo("line-webhook-event-skipped", { reason: "not-message", eventType: event.type });
+        return;
+      }
+
+      if (event.message.type !== "text") {
+        logInfo("line-webhook-event-skipped", { reason: "not-text", messageType: event.message.type });
+        return;
+      }
+
+      if (!event.replyToken) {
+        logWarning("line-webhook-event-skipped", { reason: "missing-reply-token" });
         return;
       }
 
       try {
         const question = event.message.text;
+        logInfo("line-webhook-text-message", {
+          userId: event.source?.userId,
+          messageLength: question.length
+        });
+
         const result = await getSupportAnswer(question);
 
         const replyOk = await replyLineMessage(event.replyToken, result.answer);

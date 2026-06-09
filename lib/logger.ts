@@ -12,7 +12,7 @@ type ConversationLog = {
 };
 
 export function logConversation(entry: ConversationLog) {
-  console.info(JSON.stringify({ type: "conversation", ...entry }));
+  console.log(JSON.stringify({ type: "conversation", ...entry }));
 }
 
 export function logGeminiUsage(data: {
@@ -21,7 +21,11 @@ export function logGeminiUsage(data: {
   candidatesTokenCount?: number;
   totalTokenCount?: number;
 }) {
-  console.info(JSON.stringify({ type: "gemini_usage", ...data }));
+  console.log(JSON.stringify({ type: "gemini_usage", ...data }));
+}
+
+export function logInfo(context: string, data?: Record<string, unknown>) {
+  console.log(JSON.stringify({ type: "info", context, ...data }));
 }
 
 export function logError(context: string, error: unknown) {
