@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { logGeminiUsage } from "@/lib/logger";
 import { TokenUsage } from "@/types/faq";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-1.5-flash";
 const GEMINI_ABORT_TIMEOUT_MS = 6_000;
 const MAX_OUTPUT_TOKENS = 1024;
 
@@ -26,11 +26,9 @@ export async function generateGeminiAnswer(prompt: string): Promise<GeminiAnswer
     model: MODEL,
     contents: prompt,
     config: {
-      temperature: 1.0,
+      temperature: 0.3,
       maxOutputTokens: MAX_OUTPUT_TOKENS,
-      thinkingConfig: {
-        thinkingBudget: 0
-      },
+      responseMimeType: "text/plain",
       abortSignal: AbortSignal.timeout(GEMINI_ABORT_TIMEOUT_MS)
     }
   });

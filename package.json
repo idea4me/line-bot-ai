@@ -13,13 +13,17 @@
     "@google/genai": "latest",
     "@line/bot-sdk": "latest",
     "next": "^14.2.35",
+    "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "@types/node": "latest",
+    "@types/papaparse": "^5.5.2",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "^14.2.35",
     "typescript": "latest"
   }
 }

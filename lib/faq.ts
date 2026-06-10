@@ -1,3 +1,4 @@
+import Papa from "papaparse";
 import { FaqItem } from "@/types/faq";
 
 const FAQ_CACHE_TTL_MS = 60_000;
@@ -8,84 +9,42 @@ let cachedFaq: {
   expiresAt: number;
 } | null = null;
 
-function parseCsvLine(line: string): string[] {
-  const values: string[] = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i += 1) {
-    const char = line[i];
-    const next = line[i + 1];
-
-    if (char === '"' && next === '"') {
-      current += '"';
-      i += 1;
-      continue;
-    }
-
-    if (char === '"') {
-      inQuotes = !inQuotes;
-      continue;
-    }
-
-    if (char === "," && !inQuotes) {
-      values.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  values.push(current.trim());
-  return values;
-}
-
 function isActive(value: string | undefined) {
   const normalized = value?.trim().toLowerCase();
   return normalized !== "false" && normalized !== "0" && normalized !== "no";
 }
 
 function parseFaqCsv(csv: string): FaqItem[] {
-  const lines = csv
-    .replace(/^\uFEFF/, "")
-    .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0);
+  const cleanCsv = csv.replace(/^\uFEFF/, "");
+  const parsed = Papa.parse<Record<string, string>>(cleanCsv, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: (header) => header.trim()
+  });
 
-  const [headerLine, ...rows] = lines;
-  if (!headerLine) {
-    return [];
-  }
-
-  const headers = parseCsvLine(headerLine).map((header) => header.trim());
-
-  return rows
-    .map((row) => {
-      const values = parseCsvLine(row);
-      const record = Object.fromEntries(headers.map((header, index) => [header, values[index] ?? ""]));
-
-      return {
-        category: record.category ?? "",
-        question: record.question ?? "",
-        answer: record.answer ?? "",
-        keywords: record.keywords ?? "",
-        active: isActive(record.active)
-      };
-    })
+  return parsed.data
+    .map((record) => ({
+      category: record.category?.trim() ?? "",
+      question: record.question?.trim() ?? "",
+      answer: record.answer?.trim() ?? "",
+      keywords: record.keywords?.trim() ?? "",
+      active: isActive(record.active)
+    }))
     .filter((item) => item.active);
 }
 
-function escapeCsv(value: string) {
-  return `"${value.replaceAll('"', '""')}"`;
-}
-
-function faqItemsToPromptCsv(items: FaqItem[]) {
-  const header = "category,question,answer,keywords";
-  const rows = items.map((item) =>
-    [item.category, item.question, item.answer, item.keywords].map(escapeCsv).join(",")
+function faqItemsToPromptCsv(items: FaqItem[]): string {
+  return Papa.unparse(
+    items.map((item) => ({
+      category: item.category,
+      question: item.question,
+      answer: item.answer,
+      keywords: item.keywords
+    })),
+    {
+      columns: ["category", "question", "answer", "keywords"]
+    }
   );
-
-  return [header, ...rows].join("\n");
 }
 
 export async function getFaqCsvContent() {
