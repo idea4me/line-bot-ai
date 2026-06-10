@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { logGeminiUsage } from "@/lib/logger";
 import { TokenUsage } from "@/types/faq";
 
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.5-flash";
 const GEMINI_ABORT_TIMEOUT_MS = 6_000;
 const MAX_OUTPUT_TOKENS = 1024;
 
