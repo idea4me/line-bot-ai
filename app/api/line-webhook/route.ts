@@ -113,6 +113,27 @@ export async function GET() {
   };
 
   try {
+    const sheetCsvUrl = process.env.SHEET_CSV_URL;
+    if (sheetCsvUrl) {
+      const res = await fetch(sheetCsvUrl, { cache: "no-store" });
+      const rawText = await res.text();
+      testResults.rawSheet = {
+        status: "success",
+        statusCode: res.status,
+        length: rawText.length,
+        sample: rawText.slice(0, 300)
+      };
+    } else {
+      testResults.rawSheet = { status: "error", message: "SHEET_CSV_URL not set" };
+    }
+  } catch (error: any) {
+    testResults.rawSheet = {
+      status: "error",
+      message: error.message ?? String(error)
+    };
+  }
+
+  try {
     const csv = await getFaqCsvContent();
     testResults.faqSheet = {
       status: "success",
