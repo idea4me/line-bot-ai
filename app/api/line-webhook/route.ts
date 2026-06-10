@@ -3,8 +3,6 @@ import { DEFAULT_REPLY } from "@/constants/prompts";
 import { getSupportAnswer } from "@/lib/answer";
 import { LineWebhookEvent, replyLineMessage, verifyLineSignature } from "@/lib/line";
 import { logError, logInfo, logWarning, logConversation } from "@/lib/logger";
-import { getFaqCsvContent } from "@/lib/faq";
-import { generateGeminiAnswer } from "@/lib/gemini";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -103,83 +101,15 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const testResults: Record<string, any> = {
+  return NextResponse.json({
+    ok: true,
+    service: "line-webhook",
     env: {
       LINE_CHANNEL_ACCESS_TOKEN: Boolean(process.env.LINE_CHANNEL_ACCESS_TOKEN),
       LINE_CHANNEL_SECRET: Boolean(process.env.LINE_CHANNEL_SECRET),
       GEMINI_API_KEY: Boolean(process.env.GEMINI_API_KEY),
       SHEET_CSV_URL: Boolean(process.env.SHEET_CSV_URL)
     }
-  };
-
-  try {
-    const sheetCsvUrl = process.env.SHEET_CSV_URL;
-    if (sheetCsvUrl) {
-      const res = await fetch(sheetCsvUrl, { cache: "no-store" });
-      const rawText = await res.text();
-      testResults.rawSheet = {
-        status: "success",
-        statusCode: res.status,
-        length: rawText.length,
-        sample: rawText.slice(0, 300)
-      };
-    } else {
-      testResults.rawSheet = { status: "error", message: "SHEET_CSV_URL not set" };
-    }
-  } catch (error: any) {
-    testResults.rawSheet = {
-      status: "error",
-      message: error.message ?? String(error)
-    };
-  }
-
-  try {
-    const csv = await getFaqCsvContent();
-    testResults.faqSheet = {
-      status: "success",
-      length: csv.length,
-      sample: csv.slice(0, 150)
-    };
-  } catch (error: any) {
-    testResults.faqSheet = {
-      status: "error",
-      message: error.message ?? String(error),
-      stack: error.stack
-    };
-  }
-
-  try {
-    const geminiTest = await generateGeminiAnswer("Hi");
-    testResults.gemini = {
-      status: "success",
-      response: geminiTest
-    };
-  } catch (error: any) {
-    testResults.gemini = {
-      status: "error",
-      message: error.message ?? String(error),
-      stack: error.stack
-    };
-  }
-
-  try {
-    const testAnswer = await getSupportAnswer("สวัสดี");
-    testResults.testBot = {
-      status: testAnswer.sourceUsed === "DEFAULT" ? "fallback" : "success",
-      result: testAnswer
-    };
-  } catch (error: any) {
-    testResults.testBot = {
-      status: "error",
-      message: error.message ?? String(error),
-      stack: error.stack
-    };
-  }
-
-  return NextResponse.json({
-    ok: true,
-    service: "line-webhook",
-    ...testResults
   });
 }
 
