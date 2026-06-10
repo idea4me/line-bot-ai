@@ -1,4 +1,4 @@
-import Papa from "papaparse";
+import * as Papa from "papaparse";
 import { FaqItem } from "@/types/faq";
 
 const FAQ_CACHE_TTL_MS = 60_000;
