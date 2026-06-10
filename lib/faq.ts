@@ -1,4 +1,5 @@
 import * as Papa from "papaparse";
+import supportData from "@/constants/support-data.json";
 import { FaqItem } from "@/types/faq";
 
 const FAQ_CACHE_TTL_MS = 60_000;
@@ -48,9 +49,14 @@ function faqItemsToPromptCsv(items: FaqItem[]): string {
 }
 
 export async function getFaqCsvContent() {
+  // Try static cache first
+  if (supportData.faqCsv) {
+    return supportData.faqCsv;
+  }
+
   const sheetCsvUrl = process.env.SHEET_CSV_URL;
   if (!sheetCsvUrl) {
-    throw new Error("Missing SHEET_CSV_URL");
+    throw new Error("Missing SHEET_CSV_URL and no static cache found");
   }
 
   const now = Date.now();

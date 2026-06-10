@@ -6,7 +6,7 @@ export type FaqItem = {
   active: boolean;
 };
 
-export type AnswerSource = "FAQ" | "KM" | "HELP" | "DEFAULT";
+export type AnswerSource = "FAQ" | "KM" | "HELP" | "COMBINED" | "DEFAULT";
 
 export type TokenUsage = {
   thoughtsTokenCount?: number;

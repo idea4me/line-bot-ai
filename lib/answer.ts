@@ -1,4 +1,5 @@
-import { DEFAULT_REPLY, NOT_FOUND_TOKEN, buildFaqPrompt, buildWebSourcePrompt } from "@/constants/prompts";
+import { DEFAULT_REPLY, NOT_FOUND_TOKEN, buildCombinedPrompt } from "@/constants/prompts";
+import supportData from "@/constants/support-data.json";
 import { getFaqCsvContent } from "@/lib/faq";
 import { generateGeminiAnswer, GeminiAnswer } from "@/lib/gemini";
 import { logError, logInfo } from "@/lib/logger";
@@ -56,8 +57,8 @@ async function answerFromPrompt(prompt: string, sourceUsed: AnswerSource): Promi
 }
 
 async function buildAnswer(question: string): Promise<AnswerResult> {
+  // 1. Load FAQ CSV (tries static cache, falls back to dynamic fetch if empty)
   let faqCsv: string;
-
   try {
     faqCsv = await getFaqCsvContent();
     logInfo("faq-loaded", {
@@ -69,34 +70,37 @@ async function buildAnswer(question: string): Promise<AnswerResult> {
     return defaultResult("DEFAULT", "faq_sheet_error");
   }
 
-  try {
-    const faqAnswer = await answerFromPrompt(buildFaqPrompt(faqCsv, question), "FAQ");
-    if (faqAnswer) {
-      return faqAnswer;
+  // 2. Load KM source (use static cache, fallback to dynamic fetch if empty)
+  let kmSource = supportData.kmContent;
+  if (!kmSource) {
+    try {
+      kmSource = await fetchSearchSource(KM_URL, question);
+    } catch (error) {
+      logError("km-search-fallback", error);
+      kmSource = "";
     }
-  } catch (error) {
-    logError("gemini-faq", error);
-    return defaultResult("DEFAULT", "gemini_faq_error");
   }
 
-  try {
-    const kmSource = await fetchSearchSource(KM_URL, question);
-    const kmAnswer = await answerFromPrompt(buildWebSourcePrompt("MENU KM", kmSource, question), "KM");
-    if (kmAnswer) {
-      return kmAnswer;
+  // 3. Load HELP source (use static cache, fallback to dynamic fetch if empty)
+  let helpSource = supportData.helpContent;
+  if (!helpSource) {
+    try {
+      helpSource = await fetchSearchSource(HELP_URL, question);
+    } catch (error) {
+      logError("help-search-fallback", error);
+      helpSource = "";
     }
-  } catch (error) {
-    logError("km-search", error);
   }
 
+  // 4. Call Gemini with the Combined Prompt
   try {
-    const helpSource = await fetchSearchSource(HELP_URL, question);
-    const helpAnswer = await answerFromPrompt(buildWebSourcePrompt("MENU Help Center", helpSource, question), "HELP");
-    if (helpAnswer) {
-      return helpAnswer;
+    const combinedPrompt = buildCombinedPrompt(faqCsv, kmSource, helpSource, question);
+    const combinedAnswer = await answerFromPrompt(combinedPrompt, "COMBINED");
+    if (combinedAnswer) {
+      return combinedAnswer;
     }
   } catch (error) {
-    logError("help-search", error);
+    logError("gemini-combined", error);
   }
 
   logInfo("answer-default", { reason: "all_sources_not_found" });
